@@ -9,6 +9,7 @@ const STORAGE_KEY = "flightdesk.demoBookings.v1";
 export interface DemoBookingState {
   bookings: Booking[];
   booking_flights: BookingFlight[];
+  cancelled_seed_booking_ids: number[];
 }
 
 export interface CreateDemoBookingInput {
@@ -25,6 +26,7 @@ export interface DemoBookingStore {
   createBooking: (input: CreateDemoBookingInput) => {
     booking_id: number;
   };
+  cancelBooking: (booking_id: number) => void;
   clear: () => void;
 }
 
@@ -35,9 +37,10 @@ function nextId(existing: number[]) {
 }
 
 function loadFromStorage(): DemoBookingState {
-  if (typeof window === "undefined") return { bookings: [], booking_flights: [] };
+  if (typeof window === "undefined")
+    return { bookings: [], booking_flights: [], cancelled_seed_booking_ids: [] };
   const raw = window.localStorage.getItem(STORAGE_KEY);
-  if (!raw) return { bookings: [], booking_flights: [] };
+  if (!raw) return { bookings: [], booking_flights: [], cancelled_seed_booking_ids: [] };
 
   try {
     const parsed = JSON.parse(raw) as DemoBookingState;
@@ -46,9 +49,12 @@ function loadFromStorage(): DemoBookingState {
       booking_flights: Array.isArray(parsed.booking_flights)
         ? parsed.booking_flights
         : [],
+      cancelled_seed_booking_ids: Array.isArray(parsed.cancelled_seed_booking_ids)
+        ? parsed.cancelled_seed_booking_ids
+        : [],
     };
   } catch {
-    return { bookings: [], booking_flights: [] };
+    return { bookings: [], booking_flights: [], cancelled_seed_booking_ids: [] };
   }
 }
 
@@ -60,6 +66,7 @@ export function DemoBookingProvider({ children }: { children: React.ReactNode })
   const [state, setState] = useState<DemoBookingState>({
     bookings: [],
     booking_flights: [],
+    cancelled_seed_booking_ids: [],
   });
 
   useEffect(() => {
@@ -108,11 +115,43 @@ export function DemoBookingProvider({ children }: { children: React.ReactNode })
         setState((prev) => ({
           bookings: [booking, ...prev.bookings],
           booking_flights: [leg, ...prev.booking_flights],
+          cancelled_seed_booking_ids: prev.cancelled_seed_booking_ids,
         }));
 
         return { booking_id };
       },
-      clear: () => setState({ bookings: [], booking_flights: [] }),
+      cancelBooking: (booking_id) => {
+        setState((prev) => {
+          const demoIdx = prev.bookings.findIndex((b) => b.booking_id === booking_id);
+          if (demoIdx >= 0) {
+            const nextBookings = [...prev.bookings];
+            const existing = nextBookings[demoIdx];
+            nextBookings[demoIdx] = {
+              ...existing,
+              booking_status: "cancelled",
+            };
+            return {
+              ...prev,
+              bookings: nextBookings,
+            };
+          }
+
+          // Seeded booking override: track cancelled ids locally
+          if (!prev.cancelled_seed_booking_ids.includes(booking_id)) {
+            return {
+              ...prev,
+              cancelled_seed_booking_ids: [
+                booking_id,
+                ...prev.cancelled_seed_booking_ids,
+              ],
+            };
+          }
+
+          return prev;
+        });
+      },
+      clear: () =>
+        setState({ bookings: [], booking_flights: [], cancelled_seed_booking_ids: [] }),
     };
   }, [state]);
 
