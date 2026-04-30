@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { PageHeading } from "@/components/layout/PageHeading";
+import { BookingsClient } from "@/components/bookings/BookingsClient";
 
 export const metadata: Metadata = {
   title: "Bookings",
@@ -10,14 +11,9 @@ export default function BookingsPage() {
     <div>
       <PageHeading
         title="Bookings"
-        description="View and manage reservations tied to bookings and booking-flight rows."
+        description="View seeded bookings and any demo bookings you create locally."
       />
-      <div className="rounded-2xl border border-zinc-200 bg-white p-10 text-center text-zinc-500 shadow-sm dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-400">
-        <p className="text-base">
-          Placeholder: itinerary list and detail views will ship in a future
-          step.
-        </p>
-      </div>
+      <BookingsClient />
     </div>
   );
 }
