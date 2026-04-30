@@ -17,6 +17,17 @@ export function formatUtcDateTime(iso: string) {
   }).format(date);
 }
 
+export function formatUtcDate(iso: string) {
+  const date = new Date(iso);
+  return new Intl.DateTimeFormat("en-US", {
+    timeZone: "UTC",
+    weekday: "short",
+    month: "short",
+    day: "2-digit",
+    year: "numeric",
+  }).format(date);
+}
+
 export function formatDurationMinutes(minutes: number) {
   const h = Math.floor(minutes / 60);
   const m = minutes % 60;

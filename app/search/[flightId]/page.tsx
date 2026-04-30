@@ -4,9 +4,11 @@ import { PageHeading } from "@/components/layout/PageHeading";
 import { AIRLINES, AIRPORTS, FLIGHT_PRICES, FLIGHTS } from "@/lib/data";
 import {
   formatCurrency,
+  formatUtcDate,
   formatDurationMinutes,
   formatUtcDateTime,
 } from "@/lib/utils/format";
+import { getSeatCapacitySummary } from "@/lib/utils/mockSeats";
 
 export const metadata: Metadata = {
   title: "Flight details",
@@ -63,14 +65,13 @@ export default function FlightDetailsPage({
   const origin = getAirport(flight.origin_airport_code);
   const dest = getAirport(flight.destination_airport_code);
   const { economy, first } = getPrices(flight.flight_id);
+  const seats = getSeatCapacitySummary(flight.flight_id);
 
   return (
     <div className="space-y-6">
       <PageHeading
         title="Flight details"
-        description={`${flight.origin_airport_code} → ${flight.destination_airport_code} · ${formatUtcDateTime(
-          flight.scheduled_departure,
-        )} (UTC)`}
+        description={`${formatUtcDate(flight.scheduled_departure)} · ${flight.origin_airport_code} → ${flight.destination_airport_code}`}
       />
 
       <section className="rounded-2xl border border-zinc-200 bg-white p-7 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
@@ -94,15 +95,15 @@ export default function FlightDetailsPage({
               Back
             </Link>
             <Link
-              href="/bookings"
+              href={`/bookings?flightId=${flight.flight_id}`}
               className="inline-flex items-center justify-center rounded-lg bg-sky-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-sky-700"
             >
-              Continue booking
+              Book this flight
             </Link>
           </div>
         </div>
 
-        <div className="mt-6 grid gap-4 md:grid-cols-3">
+        <div className="mt-6 grid gap-4 md:grid-cols-4">
           <div className="rounded-xl border border-zinc-200 bg-zinc-50/60 px-4 py-3 dark:border-zinc-800 dark:bg-zinc-950/20">
             <p className="text-xs font-semibold text-zinc-800 dark:text-zinc-200">
               Departure
@@ -146,6 +147,62 @@ export default function FlightDetailsPage({
                     ? formatCurrency(first.amount, first.currency_code)
                     : "—"}
                 </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="rounded-xl border border-zinc-200 bg-zinc-50/60 px-4 py-3 dark:border-zinc-800 dark:bg-zinc-950/20">
+            <p className="text-xs font-semibold text-zinc-800 dark:text-zinc-200">
+              Seats (demo)
+            </p>
+            <div className="mt-2 space-y-3 text-sm">
+              <div>
+                <div className="flex items-center justify-between">
+                  <p className="text-xs font-medium text-zinc-600 dark:text-zinc-400">
+                    Economy
+                  </p>
+                  <p className="text-xs font-semibold text-zinc-900 dark:text-zinc-50">
+                    {seats.economy_remaining}/{seats.economy_capacity}
+                  </p>
+                </div>
+                <div className="mt-1 h-2 w-full rounded-full bg-zinc-200 dark:bg-zinc-800">
+                  <div
+                    className="h-2 rounded-full bg-sky-600"
+                    style={{
+                      width: `${Math.max(
+                        3,
+                        Math.round(
+                          (seats.economy_remaining / seats.economy_capacity) *
+                            100,
+                        ),
+                      )}%`,
+                    }}
+                  />
+                </div>
+              </div>
+
+              <div>
+                <div className="flex items-center justify-between">
+                  <p className="text-xs font-medium text-zinc-600 dark:text-zinc-400">
+                    First
+                  </p>
+                  <p className="text-xs font-semibold text-zinc-900 dark:text-zinc-50">
+                    {seats.first_remaining}/{seats.first_capacity}
+                  </p>
+                </div>
+                <div className="mt-1 h-2 w-full rounded-full bg-zinc-200 dark:bg-zinc-800">
+                  <div
+                    className="h-2 rounded-full bg-emerald-600"
+                    style={{
+                      width: `${Math.max(
+                        8,
+                        Math.round(
+                          (seats.first_remaining / seats.first_capacity) * 100,
+                        ),
+                      )}%`,
+                    }}
+                  />
+                </div>
               </div>
             </div>
           </div>
