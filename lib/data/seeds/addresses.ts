@@ -1,0 +1,48 @@
+import type { Address } from "@/lib/models/types";
+
+export const ADDRESSES: readonly Address[] = [
+  {
+    address_id: 1,
+    customer_id: 1,
+    line1: "1416 E 53rd St",
+    line2: "Apt 12B",
+    city: "Chicago",
+    region: "IL",
+    postal_code: "60615",
+    country: "USA",
+    is_primary: true,
+  },
+  {
+    address_id: 2,
+    customer_id: 1,
+    line1: "555 Battery St",
+    line2: null,
+    city: "San Francisco",
+    region: "CA",
+    postal_code: "94111",
+    country: "USA",
+    is_primary: false,
+  },
+  {
+    address_id: 3,
+    customer_id: 2,
+    line1: "210 Lafayette St",
+    line2: "Floor 3",
+    city: "New York",
+    region: "NY",
+    postal_code: "10012",
+    country: "USA",
+    is_primary: true,
+  },
+  {
+    address_id: 4,
+    customer_id: 2,
+    line1: "980 N Michigan Ave",
+    line2: null,
+    city: "Chicago",
+    region: "IL",
+    postal_code: "60611",
+    country: "USA",
+    is_primary: false,
+  },
+];
