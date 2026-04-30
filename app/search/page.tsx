@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import { PageHeading } from "@/components/layout/PageHeading";
+import { SearchFlightsClient } from "@/components/search/SearchFlightsClient";
+import { AIRLINES, AIRPORTS, FLIGHT_PRICES, FLIGHTS } from "@/lib/data";
 
 export const metadata: Metadata = {
   title: "Search Flights",
@@ -10,13 +12,14 @@ export default function SearchFlightsPage() {
     <div>
       <PageHeading
         title="Search Flights"
-        description="Flight search UI will live here — filters for origin, destination, and travel dates."
+        description="Use mock data to search direct flights by route and date. (No backend yet.)"
       />
-      <div className="rounded-2xl border border-zinc-200 bg-white p-10 text-center text-zinc-500 shadow-sm dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-400">
-        <p className="text-base">
-          Placeholder: search form and results will be added in a later step.
-        </p>
-      </div>
+      <SearchFlightsClient
+        airports={AIRPORTS}
+        airlines={AIRLINES}
+        flights={FLIGHTS}
+        flight_prices={FLIGHT_PRICES}
+      />
     </div>
   );
 }
