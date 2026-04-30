@@ -47,7 +47,7 @@ export function SiteHeader() {
         <Link href="/" className="group flex items-center gap-3">
           <span
             aria-hidden
-            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-sky-600 to-sky-800 text-sm font-bold text-white shadow-md shadow-sky-900/15 ring-1 ring-white/20"
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-linear-to-br from-sky-600 to-sky-800 text-sm font-bold text-white shadow-md shadow-sky-900/15 ring-1 ring-white/20"
           >
             425
           </span>
