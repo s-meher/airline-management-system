@@ -14,6 +14,9 @@ import {
 import { formatCurrency, formatDurationMinutes, formatUtcDate, formatUtcDateTime } from "@/lib/utils/format";
 import { getSeatCapacitySummary } from "@/lib/utils/mockSeats";
 import { useDemoBookings } from "@/lib/store/demoBookings";
+import { Card } from "@/components/ui/Card";
+import { Button, ButtonLink } from "@/components/ui/Button";
+import { FieldLabel, SelectInput } from "@/components/ui/Field";
 
 type Step = "class" | "payment" | "confirm" | "success";
 
@@ -66,7 +69,7 @@ export function BookingWizard({ flightId }: { flightId: number }) {
 
   if (!flight) {
     return (
-      <div className="rounded-2xl border border-zinc-200 bg-white p-8 text-center text-zinc-600 shadow-sm dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-400">
+      <Card className="p-8 text-center text-zinc-600 dark:text-zinc-400">
         <p className="text-base font-semibold text-zinc-900 dark:text-zinc-50">
           Select a flight to book
         </p>
@@ -74,13 +77,12 @@ export function BookingWizard({ flightId }: { flightId: number }) {
           This page expects a <span className="font-mono">flightId</span> query
           parameter.
         </p>
-        <Link
-          href="/search"
-          className="mt-6 inline-flex items-center justify-center rounded-lg bg-sky-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-sky-700"
-        >
+        <div className="mt-6 flex justify-center">
+          <ButtonLink href="/search" variant="primary" size="md">
           Back to search
-        </Link>
-      </div>
+          </ButtonLink>
+        </div>
+      </Card>
     );
   }
 
@@ -89,7 +91,7 @@ export function BookingWizard({ flightId }: { flightId: number }) {
   const dest = getAirport(flight.destination_airport_code);
 
   const header = (
-    <div className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+    <Card>
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">
@@ -107,21 +109,18 @@ export function BookingWizard({ flightId }: { flightId: number }) {
           </p>
         </div>
 
-        <Link
-          href={`/search/${flight.flight_id}`}
-          className="inline-flex items-center justify-center rounded-lg border border-zinc-200 bg-white px-4 py-2 text-sm font-semibold text-zinc-800 transition hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100 dark:hover:bg-zinc-800"
-        >
+        <ButtonLink href={`/search/${flight.flight_id}`} variant="secondary" size="sm">
           View details
-        </Link>
+        </ButtonLink>
       </div>
-    </div>
+    </Card>
   );
 
   return (
     <div className="space-y-6">
       {header}
 
-      <section className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+      <Card>
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <h2 className="text-base font-semibold text-zinc-900 dark:text-zinc-50">
             Booking flow
@@ -137,8 +136,7 @@ export function BookingWizard({ flightId }: { flightId: number }) {
               <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">
                 1) Choose customer (demo)
               </p>
-              <select
-                className="mt-2 w-full rounded-xl border border-zinc-200 bg-white px-3 py-2.5 text-sm text-zinc-900 shadow-sm outline-none transition focus:border-sky-400 focus:ring-2 focus:ring-sky-200 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-50 dark:focus:border-sky-700 dark:focus:ring-sky-900/40"
+              <SelectInput
                 value={customer_id}
                 onChange={(e) => {
                   const next = Number(e.target.value);
@@ -151,7 +149,7 @@ export function BookingWizard({ flightId }: { flightId: number }) {
                     {customerLabel(c)}
                   </option>
                 ))}
-              </select>
+              </SelectInput>
               <p className="mt-2 text-xs text-zinc-600 dark:text-zinc-400">
                 No auth yet — this is a demo selector.
               </p>
@@ -211,13 +209,9 @@ export function BookingWizard({ flightId }: { flightId: number }) {
             </div>
 
             <div className="lg:col-span-2 flex justify-end">
-              <button
-                type="button"
-                onClick={() => setStep("payment")}
-                className="rounded-xl bg-sky-600 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-sky-700"
-              >
+              <Button type="button" onClick={() => setStep("payment")}>
                 Continue
-              </button>
+              </Button>
             </div>
           </div>
         ) : null}
@@ -228,13 +222,14 @@ export function BookingWizard({ flightId }: { flightId: number }) {
               <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">
                 3) Select a saved payment method
               </p>
-              <button
+              <Button
                 type="button"
                 onClick={() => setStep("class")}
-                className="text-sm font-semibold text-sky-700 hover:text-sky-800 dark:text-sky-400 dark:hover:text-sky-300"
+                variant="link"
+                size="sm"
               >
                 Back
-              </button>
+              </Button>
             </div>
 
             {availableCards.length === 0 ? (
@@ -281,14 +276,14 @@ export function BookingWizard({ flightId }: { flightId: number }) {
                     : "—"}
                 </span>
               </p>
-              <button
+              <Button
                 type="button"
                 disabled={!credit_card_id || !chosenPrice}
                 onClick={() => setStep("confirm")}
-                className="rounded-xl bg-sky-600 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-sky-700 disabled:cursor-not-allowed disabled:opacity-50"
+                className=""
               >
                 Continue
-              </button>
+              </Button>
             </div>
           </div>
         ) : null}
@@ -299,13 +294,14 @@ export function BookingWizard({ flightId }: { flightId: number }) {
               <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">
                 4) Confirm booking
               </p>
-              <button
+              <Button
                 type="button"
                 onClick={() => setStep("payment")}
-                className="text-sm font-semibold text-sky-700 hover:text-sky-800 dark:text-sky-400 dark:hover:text-sky-300"
+                variant="link"
+                size="sm"
               >
                 Back
-              </button>
+              </Button>
             </div>
 
             <div className="rounded-2xl border border-zinc-200 bg-zinc-50/60 p-5 dark:border-zinc-800 dark:bg-zinc-950/20">
@@ -331,7 +327,7 @@ export function BookingWizard({ flightId }: { flightId: number }) {
               </div>
             </div>
 
-            <button
+            <Button
               type="button"
               disabled={!credit_card_id || !chosenPrice}
               onClick={() => {
@@ -347,10 +343,10 @@ export function BookingWizard({ flightId }: { flightId: number }) {
                 setCreatedBookingId(created.booking_id);
                 setStep("success");
               }}
-              className="w-full rounded-xl bg-sky-600 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-sky-700 disabled:cursor-not-allowed disabled:opacity-50"
+              className="w-full"
             >
               Confirm and book
-            </button>
+            </Button>
 
             <p className="text-xs text-zinc-500 dark:text-zinc-500">
               This is a mock flow: no authentication and no real payment processing.
@@ -373,22 +369,16 @@ export function BookingWizard({ flightId }: { flightId: number }) {
             </div>
 
             <div className="flex flex-wrap gap-3">
-              <Link
-                href="/bookings"
-                className="inline-flex items-center justify-center rounded-xl bg-sky-600 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-sky-700"
-              >
+              <ButtonLink href="/bookings" variant="primary" size="md">
                 Go to bookings
-              </Link>
-              <Link
-                href="/search"
-                className="inline-flex items-center justify-center rounded-xl border border-zinc-200 bg-white px-5 py-3 text-sm font-semibold text-zinc-800 transition hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100 dark:hover:bg-zinc-800"
-              >
+              </ButtonLink>
+              <ButtonLink href="/search" variant="secondary" size="md">
                 Search more flights
-              </Link>
+              </ButtonLink>
             </div>
           </div>
         ) : null}
-      </section>
+      </Card>
     </div>
   );
 }

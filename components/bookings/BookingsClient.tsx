@@ -14,6 +14,9 @@ import {
 } from "@/lib/data";
 import { useDemoBookings } from "@/lib/store/demoBookings";
 import { formatCurrency, formatUtcDate } from "@/lib/utils/format";
+import { Card } from "@/components/ui/Card";
+import { Button, ButtonLink } from "@/components/ui/Button";
+import { FieldLabel, SelectInput } from "@/components/ui/Field";
 
 type AnyBooking = Booking & { _source: "seed" | "demo" };
 
@@ -77,7 +80,7 @@ export function BookingsClient() {
 
   return (
     <div className="space-y-6">
-      <section className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+      <Card>
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">
@@ -89,10 +92,9 @@ export function BookingsClient() {
               {totalSeedLegs} seeded leg(s)
             </p>
             <div className="mt-4">
-              <label className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
-                Current customer (demo)
-                <select
-                  className="mt-2 w-full rounded-xl border border-zinc-200 bg-white px-3 py-2.5 text-sm text-zinc-900 shadow-sm outline-none transition focus:border-sky-400 focus:ring-2 focus:ring-sky-200 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-50 dark:focus:border-sky-700 dark:focus:ring-sky-900/40 sm:max-w-xs"
+              <label className="block sm:max-w-xs">
+                <FieldLabel>Current customer (demo)</FieldLabel>
+                <SelectInput
                   value={customerId}
                   onChange={(e) => setCustomerId(Number(e.target.value))}
                 >
@@ -101,33 +103,31 @@ export function BookingsClient() {
                       {c.first_name} {c.last_name}
                     </option>
                   ))}
-                </select>
+                </SelectInput>
               </label>
             </div>
           </div>
           <div className="flex flex-wrap gap-2">
-            <Link
-              href="/search"
-              className="inline-flex items-center justify-center rounded-lg border border-zinc-200 bg-white px-4 py-2 text-sm font-semibold text-zinc-800 transition hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100 dark:hover:bg-zinc-800"
-            >
+            <ButtonLink href="/search" variant="secondary" size="sm">
               Search flights
-            </Link>
-            <button
+            </ButtonLink>
+            <Button
               type="button"
               onClick={clear}
-              className="inline-flex items-center justify-center rounded-lg border border-rose-200 bg-rose-50 px-4 py-2 text-sm font-semibold text-rose-800 transition hover:bg-rose-100 dark:border-rose-900/40 dark:bg-rose-950/30 dark:text-rose-200 dark:hover:bg-rose-950/50"
+              variant="danger"
+              size="sm"
             >
               Clear demo bookings
-            </button>
+            </Button>
           </div>
         </div>
-      </section>
+      </Card>
 
       <section className="grid gap-4">
         {allBookings.length === 0 ? (
-          <div className="rounded-2xl border border-zinc-200 bg-white p-8 text-center text-zinc-600 shadow-sm dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-400">
+          <Card className="p-8 text-center text-zinc-600 dark:text-zinc-400">
             No bookings for this customer yet. Try searching flights and booking one.
-          </div>
+          </Card>
         ) : null}
 
         {allBookings.map((b) => {
@@ -156,9 +156,9 @@ export function BookingsClient() {
           const card = cards.get(b.credit_card_id);
 
           return (
-            <article
+            <Card
               key={`${b._source}-${b.booking_id}`}
-              className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900"
+              className="p-6"
             >
               <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                 <div>
@@ -189,14 +189,15 @@ export function BookingsClient() {
                   <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">
                     {formatCurrency(b.total_amount, b.currency_code)}
                   </p>
-                  <button
+                  <Button
                     type="button"
                     disabled={b.booking_status !== "confirmed"}
                     onClick={() => cancelBooking(b.booking_id)}
-                    className="inline-flex items-center justify-center rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm font-semibold text-zinc-800 transition hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100 dark:hover:bg-zinc-800"
+                    variant="secondary"
+                    size="sm"
                   >
                     Cancel booking
-                  </button>
+                  </Button>
                 </div>
               </div>
 
@@ -224,7 +225,7 @@ export function BookingsClient() {
                   );
                 })}
               </div>
-            </article>
+            </Card>
           );
         })}
       </section>
