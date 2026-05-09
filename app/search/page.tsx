@@ -1,25 +1,24 @@
 import type { Metadata } from "next";
 import { PageHeading } from "@/components/layout/PageHeading";
 import { SearchFlightsClient } from "@/components/search/SearchFlightsClient";
-import { AIRLINES, AIRPORTS, FLIGHT_PRICES, FLIGHTS } from "@/lib/data";
+import { listAirlines, listAirports } from "@/lib/db/catalog";
+
+export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: "Search Flights",
 };
 
-export default function SearchFlightsPage() {
+export default async function SearchFlightsPage() {
+  const [airports, airlines] = await Promise.all([listAirports(), listAirlines()]);
+
   return (
     <div>
       <PageHeading
         title="Search Flights"
-        description="Use mock data to search direct flights by route and date. (No backend yet.)"
+        description="Search nonstop and one-stop itineraries by route and date (UTC departure day). Results come from PostgreSQL."
       />
-      <SearchFlightsClient
-        airports={AIRPORTS}
-        airlines={AIRLINES}
-        flights={FLIGHTS}
-        flight_prices={FLIGHT_PRICES}
-      />
+      <SearchFlightsClient airports={airports} airlines={airlines} />
     </div>
   );
 }

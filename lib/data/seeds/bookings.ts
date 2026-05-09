@@ -1,7 +1,7 @@
 import type { Booking } from "@/lib/models/types";
 
 /**
- * Booking totals equal summed booking_flight fare_amount for traceability in demos.
+ * Booking totals equal summed booking_flight fare_amount for traceability.
  */
 export const BOOKINGS: readonly Booking[] = [
   {

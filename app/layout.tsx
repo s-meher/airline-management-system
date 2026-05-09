@@ -22,7 +22,7 @@ export const metadata: Metadata = {
     template: "%s · FlightDesk",
   },
   description:
-    "CS 425 database course project — airline flight booking demo (mock data).",
+    "CS 425 database course project — airline flight booking with PostgreSQL.",
 };
 
 export default function RootLayout({

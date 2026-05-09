@@ -1,117 +1,259 @@
 "use client";
 
-import Link from "next/link";
-import { useMemo, useState } from "react";
-import type { CabinClass, CreditCard, Customer, Flight, FlightPrice } from "@/lib/models/types";
-import {
-  AIRLINES,
-  AIRPORTS,
-  CREDIT_CARDS,
-  CUSTOMERS,
-  FLIGHT_PRICES,
-  FLIGHTS,
-} from "@/lib/data";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import type { CabinClass } from "@/lib/models/types";
+import { AIRPORTS } from "@/lib/data";
 import { formatCurrency, formatDurationMinutes, formatUtcDate, formatUtcDateTime } from "@/lib/utils/format";
-import { getSeatCapacitySummary } from "@/lib/utils/mockSeats";
-import { useDemoBookings } from "@/lib/store/demoBookings";
 import { Card } from "@/components/ui/Card";
 import { Button, ButtonLink } from "@/components/ui/Button";
-import { FieldLabel, SelectInput } from "@/components/ui/Field";
+import { SESSION_CHANGED_EVENT } from "@/components/account/SessionUser";
+import type { DbCustomer } from "@/lib/db/customers";
+import type { DbCreditCard } from "@/lib/db/creditCards";
+import type { FlightLegWithFares } from "@/lib/db/flights";
 
 type Step = "class" | "payment" | "confirm" | "success";
-
-function getFlight(flightId: number): Flight | undefined {
-  return FLIGHTS.find((f) => f.flight_id === flightId);
-}
-
-function getAirline(airline_id: number) {
-  return AIRLINES.find((a) => a.airline_id === airline_id);
-}
 
 function getAirport(code: string) {
   return AIRPORTS.find((a) => a.airport_code === code);
 }
 
-function getPrice(flight_id: number, cabin_class: CabinClass): FlightPrice | undefined {
-  return FLIGHT_PRICES.find(
-    (p) => p.flight_id === flight_id && p.cabin_class === cabin_class,
-  );
-}
+type DbFare = { amount: number; currency_code: string };
 
-function customerLabel(c: Customer) {
-  return `${c.first_name} ${c.last_name}`;
-}
-
-function cardLabel(card: CreditCard) {
+function cardLabel(card: DbCreditCard) {
   return `${card.card_brand} •••• ${card.last_four} (exp ${String(card.exp_month).padStart(2, "0")}/${card.exp_year})`;
 }
 
-export function BookingWizard({ flightId }: { flightId: number }) {
-  const { createBooking } = useDemoBookings();
-
-  const flight = Number.isFinite(flightId) ? getFlight(flightId) : undefined;
-
+export function BookingWizard({ flightIds }: { flightIds: number[] }) {
   const [step, setStep] = useState<Step>("class");
-  const [customer_id, setCustomerId] = useState<number>(CUSTOMERS[0]?.customer_id ?? 1);
   const [cabin_class, setCabinClass] = useState<CabinClass>("economy");
   const [credit_card_id, setCreditCardId] = useState<number | null>(null);
   const [createdBookingId, setCreatedBookingId] = useState<number | null>(null);
+  const [activeCustomer, setActiveCustomer] = useState<DbCustomer | null>(null);
+  const [cards, setCards] = useState<DbCreditCard[]>([]);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [legs, setLegs] = useState<FlightLegWithFares[] | null>(null);
+  const [legsError, setLegsError] = useState<string | null>(null);
+  const [legsLoading, setLegsLoading] = useState(false);
+  const [seatInventory, setSeatInventory] = useState<{
+    economy: number;
+    first: number;
+  } | null>(null);
 
-  const availableCards = useMemo(() => {
-    return CREDIT_CARDS.filter((c) => c.customer_id === customer_id);
-  }, [customer_id]);
+  const hasFlights = flightIds.length > 0;
 
-  const economy = flight ? getPrice(flight.flight_id, "economy") : undefined;
-  const first = flight ? getPrice(flight.flight_id, "first") : undefined;
+  useEffect(() => {
+    let cancelled = false;
+    async function load() {
+      setLoadError(null);
+      try {
+        const activeRes = await fetch("/api/auth/me", { cache: "no-store" });
+        const activeJson = (await activeRes.json().catch(() => null)) as
+          | { customer: DbCustomer | null }
+          | null;
+        if (!activeRes.ok) throw new Error("Failed to load session.");
 
-  const chosenPrice = flight ? getPrice(flight.flight_id, cabin_class) : undefined;
-  const seats = flight ? getSeatCapacitySummary(flight.flight_id) : null;
+        if (cancelled) return;
+        const cust = activeJson?.customer ?? null;
+        setActiveCustomer(cust);
 
-  if (!flight) {
+        if (!cust) {
+          setCards([]);
+          return;
+        }
+
+        const cardsRes = await fetch("/api/credit-cards", { cache: "no-store" });
+        const cardsJson = (await cardsRes.json().catch(() => null)) as
+          | { creditCards: DbCreditCard[] }
+          | { errors: string[] }
+          | null;
+
+        if (!cardsRes.ok) {
+          const msg =
+            cardsJson && "errors" in cardsJson && cardsJson.errors?.[0]
+              ? cardsJson.errors[0]
+              : "Failed to load payment methods.";
+          throw new Error(msg);
+        }
+        if (cancelled) return;
+        setCards((cardsJson as { creditCards: DbCreditCard[] }).creditCards ?? []);
+      } catch (e) {
+        if (cancelled) return;
+        setLoadError(e instanceof Error ? e.message : "Failed to load booking data.");
+      }
+    }
+    void load();
+    function onSession() {
+      void load();
+    }
+    window.addEventListener(SESSION_CHANGED_EVENT, onSession);
+    return () => {
+      cancelled = true;
+      window.removeEventListener(SESSION_CHANGED_EVENT, onSession);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!hasFlights) {
+      queueMicrotask(() => {
+        setLegs(null);
+        setLegsError(null);
+        setLegsLoading(false);
+      });
+      return;
+    }
+    let cancelled = false;
+    void (async () => {
+      setLegs(null);
+      setLegsError(null);
+      setLegsLoading(true);
+      try {
+        const res = await fetch(`/api/flights?ids=${flightIds.join(",")}`, { cache: "no-store" });
+        const json = (await res.json().catch(() => null)) as
+          | { flights: FlightLegWithFares[] }
+          | { errors: string[] }
+          | null;
+        if (!res.ok) {
+          const msg =
+            json && "errors" in json && json.errors?.[0]
+              ? json.errors[0]
+              : "Failed to load flights.";
+          throw new Error(msg);
+        }
+        if (cancelled) return;
+        setLegs((json as { flights: FlightLegWithFares[] }).flights ?? []);
+      } catch (e) {
+        if (cancelled) return;
+        setLegsError(e instanceof Error ? e.message : "Failed to load flights.");
+        setLegs([]);
+      } finally {
+        if (!cancelled) setLegsLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [flightIds, hasFlights]);
+
+  const sumFareRow = useCallback(
+    (get: (leg: FlightLegWithFares) => DbFare | null): DbFare | null => {
+      if (!legs || legs.length === 0) return null;
+      const parts: DbFare[] = [];
+      for (const leg of legs) {
+        const f = get(leg);
+        if (!f) return null;
+        parts.push(f);
+      }
+      const currency = parts[0]!.currency_code;
+      for (const f of parts) {
+        if (f.currency_code !== currency) return null;
+      }
+      return {
+        amount: parts.reduce((s, f) => s + f.amount, 0),
+        currency_code: currency,
+      };
+    },
+    [legs],
+  );
+
+  const economyPrice = useMemo(
+    () => sumFareRow((leg) => leg.fares.economy),
+    [sumFareRow],
+  );
+  const firstPrice = useMemo(() => sumFareRow((leg) => leg.fares.first), [sumFareRow]);
+
+  const chosenPrice: DbFare | null =
+    cabin_class === "economy" ? economyPrice : firstPrice;
+
+  const faresMissingInDb = Boolean(
+    legs &&
+      legs.length > 0 &&
+      !legsLoading &&
+      !legsError &&
+      !economyPrice &&
+      !firstPrice,
+  );
+
+  useEffect(() => {
+    if (!legs || legs.length !== 1) {
+      queueMicrotask(() => setSeatInventory(null));
+      return;
+    }
+    let cancelled = false;
+    const id = legs[0]!.flight_id;
+    void (async () => {
+      const res = await fetch(`/api/flights/${id}/prices`, { cache: "no-store" });
+      const json = (await res.json().catch(() => null)) as {
+        inventory?: { economy: { remaining: number }; first: { remaining: number } };
+      } | null;
+      if (cancelled || !json?.inventory) return;
+      setSeatInventory({
+        economy: json.inventory.economy.remaining,
+        first: json.inventory.first.remaining,
+      });
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [legs]);
+
+  if (!hasFlights) {
     return (
       <Card className="p-8 text-center text-zinc-600 dark:text-zinc-400">
         <p className="text-base font-semibold text-zinc-900 dark:text-zinc-50">
-          Select a flight to book
+          Select flights to book
         </p>
         <p className="mt-2">
-          This page expects a <span className="font-mono">flightId</span> query
-          parameter.
+          Open this page from search results or flight details. The URL should include{" "}
+          <span className="font-mono">?flightId=…</span> for a nonstop flight or{" "}
+          <span className="font-mono">?flightIds=…</span> (comma-separated) for a connection.
         </p>
-        <div className="mt-6 flex justify-center">
+        <div className="mt-6 flex flex-wrap justify-center gap-3">
           <ButtonLink href="/search" variant="primary" size="md">
-          Back to search
+            Back to search
           </ButtonLink>
         </div>
       </Card>
     );
   }
 
-  const airline = getAirline(flight.airline_id);
-  const origin = getAirport(flight.origin_airport_code);
-  const dest = getAirport(flight.destination_airport_code);
-
   const header = (
     <Card>
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-          <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">
-            {airline?.airline_name ?? "Airline"} ·{" "}
-            {(airline?.iata_code ?? "?") + flight.flight_number}
-          </p>
-          <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
-            {formatUtcDate(flight.scheduled_departure)} · {flight.origin_airport_code} ({origin?.city ?? "—"}) →{" "}
-            {flight.destination_airport_code} ({dest?.city ?? "—"})
-          </p>
-          <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-500">
-            Departs {formatUtcDateTime(flight.scheduled_departure)} (UTC) · Arrives{" "}
-            {formatUtcDateTime(flight.scheduled_arrival)} (UTC) ·{" "}
-            {formatDurationMinutes(flight.duration_minutes)}
-          </p>
-        </div>
-
-        <ButtonLink href={`/search/${flight.flight_id}`} variant="secondary" size="sm">
-          View details
-        </ButtonLink>
+      <div className="space-y-4">
+        {legs?.map((leg) => {
+          const origin = getAirport(leg.origin_airport_code);
+          const dest = getAirport(leg.destination_airport_code);
+          return (
+            <div
+              key={leg.flight_id}
+              className="flex flex-col gap-4 border-b border-zinc-200 pb-4 last:border-b-0 last:pb-0 dark:border-zinc-800"
+            >
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                <div>
+                  <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">
+                    {leg.airline_name} · {leg.iata_code}
+                    {leg.flight_number}
+                  </p>
+                  <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
+                    {formatUtcDate(leg.scheduled_departure)} · {leg.origin_airport_code} ({origin?.city ?? "—"}) →{" "}
+                    {leg.destination_airport_code} ({dest?.city ?? "—"})
+                  </p>
+                  <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-500">
+                    Departs {formatUtcDateTime(leg.scheduled_departure)} (UTC) · Arrives{" "}
+                    {formatUtcDateTime(leg.scheduled_arrival)} (UTC) ·{" "}
+                    {formatDurationMinutes(leg.duration_minutes)}
+                  </p>
+                </div>
+                <ButtonLink href={`/search/${leg.flight_id}`} variant="secondary" size="sm">
+                  View details
+                </ButtonLink>
+              </div>
+            </div>
+          );
+        })}
+        {legsLoading ? (
+          <p className="text-sm text-zinc-600 dark:text-zinc-400">Loading flight details…</p>
+        ) : null}
       </div>
     </Card>
   );
@@ -119,6 +261,19 @@ export function BookingWizard({ flightId }: { flightId: number }) {
   return (
     <div className="space-y-6">
       {header}
+
+      {legsError ? (
+        <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800 dark:border-rose-900/40 dark:bg-rose-950/30 dark:text-rose-200">
+          {legsError}
+        </div>
+      ) : null}
+      {faresMissingInDb ? (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-900/40 dark:bg-amber-950/30 dark:text-amber-200">
+          No fares for one of these flights in the database. From the project root run{" "}
+          <span className="font-mono">npm run db:reset</span> so <span className="font-mono">flight_price</span> is
+          seeded, then refresh this page.
+        </div>
+      ) : null}
 
       <Card>
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
@@ -134,25 +289,28 @@ export function BookingWizard({ flightId }: { flightId: number }) {
           <div className="mt-6 grid gap-6 lg:grid-cols-2">
             <div>
               <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">
-                1) Choose customer (demo)
+                1) Active customer
               </p>
-              <SelectInput
-                value={customer_id}
-                onChange={(e) => {
-                  const next = Number(e.target.value);
-                  setCustomerId(next);
-                  setCreditCardId(null);
-                }}
-              >
-                {CUSTOMERS.map((c) => (
-                  <option key={c.customer_id} value={c.customer_id}>
-                    {customerLabel(c)}
-                  </option>
-                ))}
-              </SelectInput>
-              <p className="mt-2 text-xs text-zinc-600 dark:text-zinc-400">
-                No auth yet — this is a demo selector.
-              </p>
+              {loadError ? (
+                <p className="mt-2 text-xs text-rose-700 dark:text-rose-300">
+                  {loadError}
+                </p>
+              ) : null}
+              {!activeCustomer ? (
+                <div className="mt-3 flex flex-col gap-2 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900 dark:border-amber-900/40 dark:bg-amber-950/30 dark:text-amber-200">
+                  <p>Sign in before booking.</p>
+                  <ButtonLink href="/login" variant="secondary" size="sm">
+                    Sign in
+                  </ButtonLink>
+                </div>
+              ) : (
+                <p className="mt-2 text-sm text-zinc-700 dark:text-zinc-300">
+                  {activeCustomer.first_name} {activeCustomer.last_name} ·{" "}
+                  <span className="text-zinc-600 dark:text-zinc-400">
+                    {activeCustomer.email}
+                  </span>
+                </p>
+              )}
             </div>
 
             <div>
@@ -173,13 +331,15 @@ export function BookingWizard({ flightId }: { flightId: number }) {
                     Economy
                   </p>
                   <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
-                    {economy
-                      ? formatCurrency(economy.amount, economy.currency_code)
-                      : "—"}
+                    {legsLoading
+                      ? "Loading…"
+                      : economyPrice
+                        ? formatCurrency(economyPrice.amount, economyPrice.currency_code)
+                        : "—"}
                   </p>
-                  {seats ? (
+                  {seatInventory && legs?.length === 1 && cabin_class === "economy" ? (
                     <p className="mt-2 text-xs text-zinc-500 dark:text-zinc-500">
-                      {seats.economy_remaining} seats left (demo)
+                      {seatInventory.economy} seats left (economy)
                     </p>
                   ) : null}
                 </button>
@@ -197,11 +357,15 @@ export function BookingWizard({ flightId }: { flightId: number }) {
                     First
                   </p>
                   <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
-                    {first ? formatCurrency(first.amount, first.currency_code) : "—"}
+                    {legsLoading
+                      ? "Loading…"
+                      : firstPrice
+                        ? formatCurrency(firstPrice.amount, firstPrice.currency_code)
+                        : "—"}
                   </p>
-                  {seats ? (
+                  {seatInventory && legs?.length === 1 && cabin_class === "first" ? (
                     <p className="mt-2 text-xs text-zinc-500 dark:text-zinc-500">
-                      {seats.first_remaining} seats left (demo)
+                      {seatInventory.first} seats left (first)
                     </p>
                   ) : null}
                 </button>
@@ -209,7 +373,18 @@ export function BookingWizard({ flightId }: { flightId: number }) {
             </div>
 
             <div className="lg:col-span-2 flex justify-end">
-              <Button type="button" onClick={() => setStep("payment")}>
+              <Button
+                type="button"
+                disabled={
+                  !activeCustomer ||
+                  legsLoading ||
+                  !legs ||
+                  legs.length === 0 ||
+                  faresMissingInDb ||
+                  !chosenPrice
+                }
+                onClick={() => setStep("payment")}
+              >
                 Continue
               </Button>
             </div>
@@ -232,13 +407,13 @@ export function BookingWizard({ flightId }: { flightId: number }) {
               </Button>
             </div>
 
-            {availableCards.length === 0 ? (
+            {cards.length === 0 ? (
               <div className="rounded-2xl border border-zinc-200 bg-zinc-50/60 p-6 text-zinc-600 dark:border-zinc-800 dark:bg-zinc-950/20 dark:text-zinc-400">
-                No saved cards for this customer in mock data.
+                No saved cards for this customer yet. Add one in My Account.
               </div>
             ) : (
               <div className="grid gap-3">
-                {availableCards.map((card) => (
+                {cards.map((card) => (
                   <label
                     key={card.credit_card_id}
                     className={`flex cursor-pointer items-start gap-3 rounded-2xl border p-4 transition ${
@@ -330,26 +505,45 @@ export function BookingWizard({ flightId }: { flightId: number }) {
             <Button
               type="button"
               disabled={!credit_card_id || !chosenPrice}
-              onClick={() => {
+              onClick={async () => {
                 if (!credit_card_id || !chosenPrice) return;
-                const created = createBooking({
-                  customer_id,
-                  credit_card_id,
-                  flight_id: flight.flight_id,
-                  cabin_class,
-                  fare_amount: chosenPrice.amount,
-                  currency_code: chosenPrice.currency_code,
-                });
-                setCreatedBookingId(created.booking_id);
-                setStep("success");
+                setSubmitting(true);
+                try {
+                  const res = await fetch("/api/bookings", {
+                    method: "POST",
+                    headers: { "content-type": "application/json" },
+                    body: JSON.stringify({
+                      credit_card_id,
+                      flight_ids: flightIds,
+                      cabin_class,
+                    }),
+                  });
+                  const json = (await res.json().catch(() => null)) as
+                    | { booking_id: number }
+                    | { errors: string[] }
+                    | null;
+                  if (!res.ok) {
+                    const msg =
+                      json && "errors" in json && json.errors?.[0]
+                        ? json.errors[0]
+                        : "Failed to create booking.";
+                    alert(msg);
+                    return;
+                  }
+                  const booking_id = (json as { booking_id: number }).booking_id;
+                  setCreatedBookingId(booking_id);
+                  setStep("success");
+                } finally {
+                  setSubmitting(false);
+                }
               }}
               className="w-full"
             >
-              Confirm and book
+              {submitting ? "Booking…" : "Confirm and book"}
             </Button>
 
             <p className="text-xs text-zinc-500 dark:text-zinc-500">
-              This is a mock flow: no authentication and no real payment processing.
+              Bookings are stored in PostgreSQL. No payment processor is attached.
             </p>
           </div>
         ) : null}
@@ -359,7 +553,7 @@ export function BookingWizard({ flightId }: { flightId: number }) {
             <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-6 text-emerald-900 dark:border-emerald-900/40 dark:bg-emerald-950/30 dark:text-emerald-100">
               <p className="text-base font-semibold">Booking confirmed</p>
               <p className="mt-1 text-sm opacity-90">
-                Your booking was stored in local demo state.
+                Your booking was stored in PostgreSQL.
               </p>
               {createdBookingId ? (
                 <p className="mt-3 text-sm font-semibold">

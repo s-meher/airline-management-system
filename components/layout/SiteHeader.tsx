@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { SessionUser } from "@/components/account/SessionUser";
 
 const navItems = [
   { href: "/", label: "Home" },
@@ -65,6 +66,9 @@ export function SiteHeader() {
           className="flex flex-wrap items-center gap-1 sm:justify-end"
           aria-label="Primary"
         >
+          <div className="mr-2 flex flex-shrink-0 items-center">
+            <SessionUser />
+          </div>
           {navItems.map((item) => (
             <NavLink
               key={item.href}
@@ -73,6 +77,12 @@ export function SiteHeader() {
               active={isActive(pathname, item.href)}
             />
           ))}
+          <Link
+            href="/register"
+            className="rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm font-medium text-zinc-700 transition hover:bg-zinc-50 hover:text-zinc-900 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-200 dark:hover:bg-zinc-900"
+          >
+            Register
+          </Link>
         </nav>
       </div>
     </header>

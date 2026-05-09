@@ -1,15 +1,19 @@
+/** Total seats per cabin — matches seeded `flight_cabin_inventory.seats_total`. */
+export function economySeatTotal(flight_id: number) {
+  return 150 + (flight_id % 4) * 12;
+}
+
+export function firstSeatTotal(flight_id: number) {
+  return 16 + (flight_id % 3) * 4;
+}
+
 /**
- * Deterministic seat availability for demos.
- *
- * This intentionally stays OUTSIDE the domain model (no DB yet), but provides
- * a realistic “capacity summary” for the flight details UI.
+ * @deprecated Use database `flight_cabin_inventory` via API; kept for tests only.
  */
 export function getSeatCapacitySummary(flight_id: number) {
-  // Small, plausible jet configs for demo
-  const economy_capacity = 150 + (flight_id % 4) * 12; // 150–186
-  const first_capacity = 16 + (flight_id % 3) * 4; // 16–24
+  const economy_capacity = economySeatTotal(flight_id);
+  const first_capacity = firstSeatTotal(flight_id);
 
-  // Deterministic “sold” counts that look believable
   const economy_sold = Math.min(economy_capacity, 40 + (flight_id % 11) * 9);
   const first_sold = Math.min(first_capacity, 2 + (flight_id % 7));
 
@@ -23,4 +27,3 @@ export function getSeatCapacitySummary(flight_id: number) {
     first_remaining,
   };
 }
-

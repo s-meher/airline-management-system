@@ -1,8 +1,19 @@
-import type { Flight } from "@/lib/models";
-import { airlineById, airportByCode } from "@/lib/data";
+import type { Airline, Airport, Flight } from "@/lib/models";
+import {
+  airlineById as defaultAirlineById,
+  airportByCode as defaultAirportByCode,
+} from "@/lib/data";
 import { formatDurationMinutes, formatUtcDateTime } from "@/lib/utils/format";
 
-export function FlightPreviewList({ flights }: { flights: readonly Flight[] }) {
+export function FlightPreviewList({
+  flights,
+  airlineById = defaultAirlineById,
+  airportByCode = defaultAirportByCode,
+}: {
+  flights: readonly Flight[];
+  airlineById?: Map<number, Airline>;
+  airportByCode?: Map<string, Airport>;
+}) {
   return (
     <ul className="divide-y divide-zinc-200 rounded-xl border border-zinc-200 bg-zinc-50/60 dark:divide-zinc-800 dark:border-zinc-800 dark:bg-zinc-950/20">
       {flights.map((f) => {

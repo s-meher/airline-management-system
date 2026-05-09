@@ -11,7 +11,7 @@ export default function BookingsPage() {
     <div>
       <PageHeading
         title="Bookings"
-        description="View seeded bookings and any demo bookings you create locally."
+        description="View bookings for the active customer, including cancellations."
       />
       <BookingsClient />
     </div>

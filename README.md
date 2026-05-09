@@ -1,87 +1,80 @@
-# FlightDesk — CS 425 Airline Flight Booking (Mock Demo)
+# FlightDesk — CS 425 Airline Flight Booking
 
-FlightDesk is a **CS 425 database course project** that demonstrates an airline flight booking experience with a clean, professional UI. The current version is a **frontend demo powered by mock data** (no real database connection yet).
+FlightDesk is a **CS 425 database course project**: an airline booking UI aligned to a relational schema, with **PostgreSQL** for search, authentication, account data, bookings, fare inventory, and API rate limiting.
 
 ## Tech Stack
 
-- **Next.js** (App Router)
-- **TypeScript**
+- **Next.js** (App Router) and **TypeScript**
 - **Tailwind CSS**
-- **Client-side demo stores** (React Context + `localStorage`)
+- **PostgreSQL** (see `db/schema.sql`, `docker-compose.yml`)
+- **Sessions**: signed JWT in an httpOnly cookie (`flightdesk.session`), backed by bcrypt password hashes on `customer`
 
-## Main Features (Demo)
+## Features
 
-- **Home**: product-like overview with mock-backed summary cards
-- **Search flights**: route/date filters with result cards and prices (Economy/First)
-- **Flight details**: route, times, prices, and demo seat availability
-- **Booking flow (mock)**: choose class → choose saved card → confirm → success state
-- **Manage bookings (mock)**: list bookings by “current customer”, cancel bookings, status updates
+- **Home**: flight, airport, and booking summaries from PostgreSQL (falls back to bundled seed fixtures if the database is unreachable)
+- **Search**: nonstop and one-stop itineraries with optional date range, airline filter, sort, and pagination (`GET /api/search`); per-IP rate limiting
+- **Flight details**: PostgreSQL flight row; fares from `flight_price`; cabin **seat inventory** from `flight_cabin_inventory`
+- **Book**: single-leg (`?flightId=`) or multi-leg (`?flightIds=1,2`); reserves seats per cabin before inserting `booking` + `booking_flight`
+- **Bookings**: list and cancel for the signed-in customer; cancel releases reserved seats in a transaction
+- **Register / account**: customers (with passwords), addresses, and credit cards in PostgreSQL
 
-## Running Locally
+## Environment
 
-1. Install dependencies
+Copy `.env.example` to `.env.local` and set:
+
+| Variable | Purpose |
+|----------|---------|
+| `DATABASE_URL` | PostgreSQL connection string |
+| `AUTH_SECRET` | Secret used to sign session JWTs (use a strong random value in production) |
+| `SEED_USER_PASSWORD` | Optional; bcrypt-updates seeded customers during `db:seed` (default: `flightdesk`) |
+
+## Database setup
+
+1. Start Postgres (e.g. `npm run db:up` with Docker Compose).
+2. Migrate and seed:
+
+```bash
+npm run db:migrate
+npm run db:seed
+```
+
+Or reset schema + seed:
+
+```bash
+npm run db:reset
+```
+
+## Running the app
 
 ```bash
 npm install
-```
-
-2. Start the dev server
-
-```bash
 npm run dev
 ```
 
-Open `http://localhost:3000`.
+Open `http://localhost:3000`. **Register** or **sign in** (after seeding, demo passwords default to `flightdesk` unless `SEED_USER_PASSWORD` was set), then search, book, and manage bookings.
 
-## App Structure (High-level)
+## Tests
 
-- **`app/`**: Next.js routes (App Router)
-  - `app/page.tsx`: homepage
-  - `app/search/page.tsx`: search form + results
-  - `app/search/[flightId]/page.tsx`: flight details
-  - `app/book/page.tsx`: booking wizard (mock)
-  - `app/bookings/page.tsx`: manage bookings (mock)
-  - `app/account/page.tsx`: my account (profile management — WIP)
-- **`components/`**: reusable UI and page components
-  - `components/ui/`: small UI primitives (`Card`, `Button`, `Field`)
-- **`lib/models/`**: TypeScript domain types that mirror the schema
-- **`lib/data/`**: mock seed “tables” + small lookup helpers
-- **`lib/store/`**: client-side demo stores (bookings, etc.)
-- **`lib/utils/`**: small formatting + demo helpers
+```bash
+npm run test
+```
 
-## Mock Data and Schema Mapping
+## App structure
 
-The UI is intentionally built to reflect a relational database design. Mock data lives in `lib/data/seeds/` and follows schema-like naming (`snake_case` fields).
-
-Current “tables” represented:
-
-- `airport`
-- `airline`
-- `customer`
-- `address`
-- `credit_card`
-- `flight`
-- `flight_price`
-- `booking`
-- `booking_flight`
-
-Schema relationships reflected in the UI:
-
-- **Customer → Addresses / Credit Cards**: saved profile data per customer
-- **Credit Card → Billing Address**: `credit_card.billing_address_id`
-- **Booking → Credit Card**: bookings reference saved cards via `booking.credit_card_id`
-- **Booking → Flights**: multi-segment itineraries via `booking_flight`
+- **`app/`** — routes and API handlers (`app/api/*`)
+- **`components/`** — UI (including `components/ui/`)
+- **`lib/db/`** — connection pool, SQL queries, inventory, rate limits
+- **`lib/data/`** — read-only TypeScript fixtures aligned with seed SQL (homepage fallback and labels where useful)
+- **`lib/models/`** — shared TypeScript types
 
 ## Notes
 
-- **No authentication** yet. The app uses a simple “current customer” selector for demos.
-- **No real payments**. The booking flow stores confirmations in `localStorage`.
-- Times are displayed in **UTC** for consistent class demos.
+- **No payment processor**; cards are stored rows only.
+- Times are shown in **UTC**.
+- **Rate limits**: search (and other guarded routes) track requests per client IP in Postgres (`api_rate_limit`).
+- **`next build`** may try to fetch remote fonts; offline builds can fail for that reason — `npm run test` and `npx tsc --noEmit` are useful checks.
 
-## Future Improvements (Short List)
+## Possible extensions
 
-- Add full **My Account** management (add/edit/delete addresses and payment methods)
-- Implement **connections / multi-leg search** (beyond direct flights)
-- Persist demo data behind a real API + database (Postgres/MySQL)
-- Add booking details pages and better itinerary presentation
-- Add basic form validation and error states (still demo-friendly)
+- OAuth / MFA and staff roles
+- Seat maps and operational schedule tooling

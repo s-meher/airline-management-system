@@ -6,21 +6,39 @@ export const metadata: Metadata = {
   title: "Book",
 };
 
-export default function BookPage({
+function parseFlightIds(sp: {
+  flightId?: string | string[];
+  flightIds?: string | string[];
+}): number[] {
+  const rawIds = sp.flightIds;
+  if (rawIds) {
+    const s = Array.isArray(rawIds) ? rawIds[0] : rawIds;
+    return s
+      .split(",")
+      .map((x) => Number(x.trim()))
+      .filter((n) => Number.isFinite(n) && n > 0);
+  }
+  const rawOne = sp.flightId;
+  const one = Array.isArray(rawOne) ? rawOne[0] : rawOne;
+  const n = one ? Number(one) : NaN;
+  return Number.isFinite(n) && n > 0 ? [n] : [];
+}
+
+export default async function BookPage({
   searchParams,
 }: {
-  searchParams: { flightId?: string };
+  searchParams: Promise<{ flightId?: string | string[]; flightIds?: string | string[] }>;
 }) {
-  const flightId = searchParams.flightId ? Number(searchParams.flightId) : NaN;
+  const sp = await searchParams;
+  const flightIds = parseFlightIds(sp);
 
   return (
     <div>
       <PageHeading
         title="Book"
-        description="Mock booking flow — choose class, select a saved card, and confirm."
+        description="Choose cabin class, pick a saved card, and confirm. Bookings are saved in PostgreSQL."
       />
-      <BookingWizard flightId={flightId} />
+      <BookingWizard flightIds={flightIds} />
     </div>
   );
 }
-

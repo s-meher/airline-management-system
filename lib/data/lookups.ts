@@ -16,13 +16,14 @@ import {
   FLIGHTS,
 } from "@/lib/data/seeds";
 
-function indexBy<K extends string | number, T>(
+function indexBy<T, K extends keyof T>(
   rows: readonly T[],
-  key: keyof T,
-): Map<K, T> {
-  const map = new Map<K, T>();
+  key: K,
+): Map<T[K] & (string | number), T> {
+  type Id = T[K] & (string | number);
+  const map = new Map<Id, T>();
   for (const row of rows) {
-    map.set(row[key] as K, row);
+    map.set(row[key] as Id, row);
   }
   return map;
 }

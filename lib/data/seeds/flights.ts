@@ -1,7 +1,7 @@
 import type { Flight } from "@/lib/models/types";
 
 /**
- * Scheduled segments among ORD / JFK / SFO hubs — ISO timestamps for demo (UTC).
+ * Scheduled segments among ORD / JFK / SFO hubs — ISO timestamps (UTC).
  * Flight_number matches ticketing convention carrier code handled separately via airline_id.
  */
 export const FLIGHTS: readonly Flight[] = [
@@ -74,5 +74,46 @@ export const FLIGHTS: readonly Flight[] = [
     scheduled_departure: "2026-06-18T22:15:00.000Z",
     scheduled_arrival: "2026-06-19T01:40:00.000Z",
     duration_minutes: 145,
+  },
+  // May 2026 sample dates; live search uses UTC calendar date of departure in PostgreSQL.
+  {
+    flight_id: 108,
+    airline_id: 1,
+    flight_number: "601",
+    origin_airport_code: "ORD",
+    destination_airport_code: "SFO",
+    scheduled_departure: "2026-05-08T15:00:00.000Z",
+    scheduled_arrival: "2026-05-08T17:50:00.000Z",
+    duration_minutes: 290,
+  },
+  {
+    flight_id: 109,
+    airline_id: 1,
+    flight_number: "602",
+    origin_airport_code: "ORD",
+    destination_airport_code: "JFK",
+    scheduled_departure: "2026-05-08T18:30:00.000Z",
+    scheduled_arrival: "2026-05-08T22:05:00.000Z",
+    duration_minutes: 155,
+  },
+  {
+    flight_id: 110,
+    airline_id: 2,
+    flight_number: "650",
+    origin_airport_code: "JFK",
+    destination_airport_code: "SFO",
+    scheduled_departure: "2026-05-08T23:00:00.000Z",
+    scheduled_arrival: "2026-05-09T03:30:00.000Z",
+    duration_minutes: 390,
+  },
+  {
+    flight_id: 111,
+    airline_id: 1,
+    flight_number: "710",
+    origin_airport_code: "ORD",
+    destination_airport_code: "SFO",
+    scheduled_departure: "2026-06-25T16:00:00.000Z",
+    scheduled_arrival: "2026-06-25T18:50:00.000Z",
+    duration_minutes: 290,
   },
 ];

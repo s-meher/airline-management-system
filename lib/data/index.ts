@@ -1,6 +1,6 @@
 /**
- * Central mock catalog — read-only fixtures representing seeded SQL tables.
- * UI layers should import from `@/lib/data` or `@/lib/data/lookups`.
+ * Central read-only fixtures aligned with seeded SQL tables (see `db/` and `scripts/db/seed.ts`).
+ * UI layers may import from `@/lib/data` or `@/lib/data/lookups`.
  */
 
 import type {
@@ -26,8 +26,8 @@ import {
   FLIGHTS,
 } from "@/lib/data/seeds";
 
-/** Typed snapshot of all mock tables for demos / debugging */
-export interface MockCatalog {
+/** Typed snapshot of all seed tables (debugging / homepage samples). */
+export interface SeedTablesSnapshot {
   airports: readonly Airport[];
   airlines: readonly Airline[];
   customers: readonly Customer[];
@@ -39,7 +39,7 @@ export interface MockCatalog {
   booking_flights: readonly BookingFlight[];
 }
 
-export const MOCK_CATALOG: MockCatalog = {
+export const SEED_TABLES_SNAPSHOT: SeedTablesSnapshot = {
   airports: AIRPORTS,
   airlines: AIRLINES,
   customers: CUSTOMERS,
