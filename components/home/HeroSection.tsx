@@ -13,9 +13,7 @@ export function HeroSection() {
             Book flights like a real product.
           </h1>
           <p className="mt-4 text-lg leading-relaxed text-zinc-600 dark:text-zinc-300">
-            FlightDesk is a full-stack airline booking UI aligned to a relational
-            schema — airports, airlines, flights, fares, customers, payments, and
-            bookings — backed by PostgreSQL.
+            A CS 425 airline booking app backed by PostgreSQL.
           </p>
 
           <div className="mt-7 flex flex-wrap gap-3">

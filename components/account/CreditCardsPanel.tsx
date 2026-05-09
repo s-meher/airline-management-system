@@ -72,7 +72,7 @@ export function CreditCardsPanel() {
     <Card className="p-6">
       <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">Credit cards</p>
       <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
-        Payment methods for the active customer.
+        Payment methods for the signed-in customer.
       </p>
 
       {state.kind === "error" ? (

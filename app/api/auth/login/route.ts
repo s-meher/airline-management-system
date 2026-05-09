@@ -10,6 +10,23 @@ function normalizeEmail(email: string) {
   return email.trim().toLowerCase();
 }
 
+function friendlyServerError(msg: string): string {
+  if (msg.includes("Missing required env var: DATABASE_URL")) {
+    return "Database not configured. Set DATABASE_URL and restart the dev server.";
+  }
+  if (
+    msg.includes("ECONNREFUSED") ||
+    msg.includes("connect ECONNREFUSED") ||
+    msg.includes("Connection terminated unexpectedly") ||
+    msg.includes("getaddrinfo ENOTFOUND") ||
+    msg.includes("password authentication failed") ||
+    (msg.includes("does not exist") && msg.includes("database"))
+  ) {
+    return "Database unavailable. Start Postgres and run `npm run db:reset`.";
+  }
+  return "Sign-in failed.";
+}
+
 export async function POST(req: Request) {
   const ip = clientIp(req);
   const ok = await rateLimitAllow(`login:${ip}`, 25);
@@ -25,7 +42,14 @@ export async function POST(req: Request) {
     return NextResponse.json({ errors: ["Email and password are required."] }, { status: 400 });
   }
 
-  const row = await findLoginRow(email);
+  let row: Awaited<ReturnType<typeof findLoginRow>> = null;
+  try {
+    row = await findLoginRow(email);
+  } catch (e: unknown) {
+    const msg = String(e);
+    logFlightDesk("error", "auth.login_error", { message: msg });
+    return NextResponse.json({ errors: [friendlyServerError(msg)] }, { status: 500 });
+  }
   if (!row?.password_hash || !bcrypt.compareSync(password, row.password_hash)) {
     logFlightDesk("warn", "auth.login_failed", { email });
     return NextResponse.json({ errors: ["Invalid email or password."] }, { status: 401 });

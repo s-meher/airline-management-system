@@ -11,7 +11,7 @@ FlightDesk is a **CS 425 database course project**: an airline booking UI aligne
 
 ## Features
 
-- **Home**: flight, airport, and booking summaries from PostgreSQL (falls back to bundled seed fixtures if the database is unreachable)
+- **Home**: flight, airport, and booking summaries from PostgreSQL (falls back to bundled seed fixtures if the database is unreachable — for demos, keep Postgres running)
 - **Search**: nonstop and one-stop itineraries with optional date range, airline filter, sort, and pagination (`GET /api/search`); per-IP rate limiting
 - **Flight details**: PostgreSQL flight row; fares from `flight_price`; cabin **seat inventory** from `flight_cabin_inventory`
 - **Book**: single-leg (`?flightId=`) or multi-leg (`?flightIds=1,2`); reserves seats per cabin before inserting `booking` + `booking_flight`
@@ -69,7 +69,6 @@ npm run test
 
 ## Notes
 
-- **No payment processor**; cards are stored rows only.
 - Times are shown in **UTC**.
 - **Rate limits**: search (and other guarded routes) track requests per client IP in Postgres (`api_rate_limit`).
 - **`next build`** may try to fetch remote fonts; offline builds can fail for that reason — `npm run test` and `npx tsc --noEmit` are useful checks.

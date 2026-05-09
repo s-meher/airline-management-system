@@ -10,6 +10,23 @@ function normalizeEmail(email: string) {
   return email.trim().toLowerCase();
 }
 
+function friendlyServerError(msg: string): string {
+  if (msg.includes("Missing required env var: DATABASE_URL")) {
+    return "Database not configured. Set DATABASE_URL and restart the dev server.";
+  }
+  if (
+    msg.includes("ECONNREFUSED") ||
+    msg.includes("connect ECONNREFUSED") ||
+    msg.includes("Connection terminated unexpectedly") ||
+    msg.includes("getaddrinfo ENOTFOUND") ||
+    msg.includes("password authentication failed") ||
+    msg.includes("does not exist") && msg.includes("database")
+  ) {
+    return "Database unavailable. Start Postgres and run `npm run db:reset`.";
+  }
+  return "Registration failed.";
+}
+
 export async function POST(req: Request) {
   const ip = clientIp(req);
   const ok = await rateLimitAllow(`register:${ip}`, 12);
@@ -59,6 +76,6 @@ export async function POST(req: Request) {
       return NextResponse.json({ errors: ["A customer with this email already exists."] }, { status: 409 });
     }
     logFlightDesk("error", "auth.register_failed", { message: msg });
-    return NextResponse.json({ errors: ["Registration failed."] }, { status: 500 });
+    return NextResponse.json({ errors: [friendlyServerError(msg)] }, { status: 500 });
   }
 }
